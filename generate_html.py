@@ -10,6 +10,12 @@ ICS_URLS = {
     "Oberliga 2 NRW": "https://ergebnisdienst.volleyball.nrw/iCal/matchSeries/matches.ical?matchSeriesId=95244340&calenderType=ics",
 }
 
+LIGA_TABLE_URLS = {
+    "1. Bundesliga": "https://www.volleyball-bundesliga.de/1bundesliga/tabelle",
+    "2. Bundesliga Nord": "https://www.volleyball-bundesliga.de/2bundesliga/tabelle",
+    "Oberliga 2 NRW": "https://ergebnisdienst.volleyball.nrw/index.php?L=&og=Liga&Sp=2025&Liga=95244340",
+}
+
 def get_ical_data(url, retries=3):
     for attempt in range(retries):
         try:
@@ -25,10 +31,17 @@ def main():
         print(f"🔄 Lade: {liga} – {url}")
         try:
             data = get_ical_data(url)
-            print(f"✅ {liga} erfolgreich geladen ({len(data)} Bytes)")
         except Exception as e:
             print(f"❌ Fehler bei {liga}: {e}")
             continue
+
+        if b"BEGIN:VCALENDAR" not in data:
+            print(
+                f"❌ Ungültige iCal-Daten für {liga} erhalten (Inhalt beginnt mit: {data[:60]!r})"
+            )
+            continue
+
+        print(f"✅ {liga} erfolgreich geladen ({len(data)} Bytes)")
         cal = Calendar.from_ical(data)
         for vevent in cal.walk("VEVENT"):
             start = vevent["DTSTART"].dt
@@ -50,6 +63,11 @@ def main():
         for d, t, h, a, loc, lg in events
     )
 
+    table_links = "\n".join(
+        f"<li><a href=\"{url}\" target=\"_blank\" rel=\"noopener\">{liga}</a></li>"
+        for liga, url in LIGA_TABLE_URLS.items()
+    )
+
     html = f"""<!doctype html>
 <html lang="de"><head>
 <meta charset="utf-8"><title>USC Münster Spielplan 2025/26</title>
@@ -58,8 +76,17 @@ body{{font-family:Arial,sans-serif;padding:20px}}
 table{{width:100%;border-collapse:collapse;margin-top:20px}}
 th,td{{border:1px solid #ccc;padding:8px;text-align:left}}
 th{{background:#f2f2f2}}
+details{{margin-top:20px}}
+details summary{{cursor:pointer;font-weight:bold}}
+details ul{{margin:10px 0 0 20px}}
 </style></head><body>
 <h1>USC Münster – Spielplan Saison 2025/26</h1>
+<details>
+<summary>Tabellen der USC-Mannschaften</summary>
+<ul>
+{table_links}
+</ul>
+</details>
 <table><thead>
 <tr><th>Datum</th><th>Zeit</th><th>Heim</th><th>Gast</th><th>Ort</th><th>Liga</th></tr>
 </thead><tbody>
